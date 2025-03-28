@@ -1,0 +1,22 @@
+[package]
+name = "libserver"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "server"
+crate-type = ["cdylib"]
+
+[dependencies]
+jni.workspace = true
+
+tracing.workspace = true
+tracing-android.workspace = true
+tracing-subscriber.workspace = true
+
+rand.workspace = true
+rusqlite.workspace = true
+rbase64.workspace = true
+
+proc-maps.workspace = true
+libc.workspace = true

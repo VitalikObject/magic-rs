@@ -1,0 +1,20 @@
+[workspace]
+members = ["libserver"]
+resolver = "2"
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+
+[workspace.dependencies]
+jni = "0.21.1"
+tracing = "0.1.41"
+tracing-android = "0.2.0"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+
+rand = "0.9"
+rusqlite = { version = "0.34.0", features = ["bundled"] }
+rbase64 = "2.0.3"
+
+proc-maps = "0.4.0"
+libc = "0.2.171"
