@@ -113,4 +113,8 @@ impl LogicGameMode {
     pub fn get_state(&self) -> i32 {
         unsafe { *(self.0 as *const i32) }
     }
+
+    pub fn set_current_timestamp(&mut self, value: i32) {
+        unsafe { *(self.0.wrapping_add(64) as *mut i32) = value }
+    }    
 }

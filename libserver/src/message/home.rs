@@ -23,6 +23,14 @@ impl OwnHomeDataMessage {
         Self(PiranhaMessage(instance))
     }
 
+    pub fn set_seconds_since_last_save(&mut self, value: i32) {
+        unsafe { *(self.0 .0.wrapping_add(48) as *mut i32) = value }
+    }
+
+    pub fn set_current_timestamp(&mut self, value: i32) {
+        unsafe { *(self.0 .0.wrapping_add(64) as *mut i32) = value }
+    }
+
     pub fn set_logic_client_home(&mut self, logic_client_home: LogicClientHome) {
         unsafe {
             *(self.0 .0.wrapping_add(68) as *mut usize) = logic_client_home.0 as usize;

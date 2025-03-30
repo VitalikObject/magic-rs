@@ -34,6 +34,7 @@ mod message;
 mod network;
 mod resources;
 mod sc_string;
+mod time_util;
 
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
@@ -243,15 +244,27 @@ fn handle_login_message(
     logic_client_avatar.set_id(&player_data.id);
 
     let mut logic_game_mode = LogicGameMode::new();
-    logic_game_mode.load_home_state(&logic_client_home, &logic_client_avatar, 0);
+    let timestamp = time_util::get_current_timestamp();
+    let seconds_since_last_save = (timestamp - player_data.last_save_timestamp) as i32;
+    logic_game_mode.load_home_state(&logic_client_home, &logic_client_avatar, seconds_since_last_save);
+    logic_game_mode.set_current_timestamp(timestamp as i32);
 
+    own_home_data_message.set_seconds_since_last_save(seconds_since_last_save);
+    own_home_data_message.set_current_timestamp(timestamp as i32);
     own_home_data_message.set_logic_client_home({
         let mut logic_client_home = LogicClientHome::new();
         logic_client_home.set_home_json(&player_data.home_json);
         logic_client_home
     });
 
-    own_home_data_message.set_logic_client_avatar(logic_game_mode.get_cloned_home_owner().unwrap());
+    own_home_data_message.set_logic_client_avatar({
+        let mut logic_client_avatar = LogicClientAvatar::new();
+        let data = rbase64::decode(&player_data.client_avatar_blob).unwrap();
+        let mut byte_stream = ByteStream::from(&data);
+        logic_client_avatar.decode(&mut byte_stream);
+        logic_client_avatar.set_id(&player_data.id);        
+        logic_client_avatar
+    });
 
     session.account_id = player_data.id;
     session.logic_game_mode = Some(logic_game_mode);

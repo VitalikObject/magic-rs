@@ -4,7 +4,7 @@ use tracing::error;
 
 use crate::{
     byte_stream::ByteStream, logic::avatar::LogicClientAvatar, math::LogicLong,
-    resources::ResourceManager, sc_string::StringBuilder,
+    resources::ResourceManager, sc_string::StringBuilder, time_util::get_current_timestamp
 };
 
 pub struct DatabaseConnection(Connection);
@@ -14,6 +14,8 @@ pub struct PlayerSaveData {
     pub pass_token: String,
     pub home_json: String,
     pub client_avatar_blob: String,
+    pub score: i32,
+    pub last_save_timestamp: i64
 }
 
 impl DatabaseConnection {
@@ -24,7 +26,8 @@ impl DatabaseConnection {
                 pass_token TEXT NOT NULL,
                 home_json TEXT NOT NULL,
                 client_avatar_blob TEXT NOT NULL,
-                score INTEGER NOT NULL
+                score INTEGER NOT NULL,
+                last_save_timestamp BIGINT NOT NULL
             )
         "#;
 
@@ -57,15 +60,17 @@ impl DatabaseConnection {
         avatar: &LogicClientAvatar,
     ) -> Result<()> {
         const UPDATE_QUERY: &str =
-            r#"UPDATE t_player_data SET home_json = ?1, client_avatar_blob = ?2 WHERE id = ?3"#;
+            r#"UPDATE t_player_data SET home_json = ?1, client_avatar_blob = ?2, last_save_timestamp = ?3 WHERE id = ?4"#;
 
         let mut byte_stream = ByteStream::new(10);
         avatar.encode(&mut byte_stream);
         let client_avatar_blob = rbase64::encode(byte_stream.get_byte_array());
 
+        let timestamp = get_current_timestamp();
+
         self.0.execute(
             UPDATE_QUERY,
-            params![home_json, &client_avatar_blob, id.lower_int],
+            params![home_json, &client_avatar_blob, timestamp, id.lower_int],
         )?;
 
         Ok(())
@@ -73,8 +78,8 @@ impl DatabaseConnection {
 
     fn create_new_player_data(&self) -> Result<PlayerSaveData> {
         const INSERT_QUERY: &str = r#"
-            INSERT INTO t_player_data (pass_token, home_json, client_avatar_blob, score)
-            values (?1, ?2, ?3, ?4) RETURNING *
+            INSERT INTO t_player_data (pass_token, home_json, client_avatar_blob, score, last_save_timestamp)
+            values (?1, ?2, ?3, ?4, ?5) RETURNING *
         "#;
 
         let pass_token = Alphanumeric.sample_string(&mut rand::rng(), 40);
@@ -88,6 +93,8 @@ impl DatabaseConnection {
         logic_client_avatar.encode(&mut byte_stream);
         let client_avatar_blob = rbase64::encode(byte_stream.get_byte_array());
 
+        let timestamp = get_current_timestamp();
+
         let id: i32 = self
             .0
             .prepare(INSERT_QUERY)
@@ -95,7 +102,7 @@ impl DatabaseConnection {
                 error!("db::prepare `insert into t_player_data` failed: {err}");
             })?
             .query_map(
-                params![&pass_token, &home_json, &client_avatar_blob, 0],
+                params![&pass_token, &home_json, &client_avatar_blob, 0, timestamp],
                 |row| row.get(0),
             )?
             .next()
@@ -106,6 +113,8 @@ impl DatabaseConnection {
             pass_token,
             home_json,
             client_avatar_blob,
+            score: 0,
+            last_save_timestamp : timestamp
         })
     }
 
@@ -123,6 +132,8 @@ impl DatabaseConnection {
                     pass_token: row.get(1)?,
                     home_json: row.get(2)?,
                     client_avatar_blob: row.get(3)?,
+                    score: row.get(4)?,
+                    last_save_timestamp: row.get(5)?
                 })
             })?
             .into_iter()
