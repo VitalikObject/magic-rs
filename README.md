@@ -24,9 +24,9 @@ Navigate to the [Releases](https://git.xeondev.com/Supercell/Magic/releases) pag
 - [cargo-ndk](https://docs.rs/crate/cargo-ndk/3.5.4)
 
 #### Preparing the toolchain
-- Install android armv7 target via rustup:
+- Install android i686 target via rustup:
 ```sh
-rustup target add armv7-linux-androideabi
+rustup target add i686-linux-android 
 ```
 - Install cargo-ndk extension:
 ```sh
@@ -37,9 +37,9 @@ cargo install cargo-ndk
 
 #### Compiling server library
 ```sh
-git clone https://git.xeondev.com/Supercell/Magic
-cd Magic
-cargo ndk -t armeabi-v7a build --release
+git clone https://github.com/VitalikObject/magic-rs.git
+cd magic-rs
+cargo ndk -t i686-linux-android build --release
 ```
 
 ### Community
