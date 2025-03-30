@@ -1,4 +1,4 @@
-use crate::{byte_stream::ByteStream, import, malloc};
+use crate::{byte_stream::ByteStream, import, malloc, math::LogicLong};
 
 use super::data::LogicNpcData;
 
@@ -35,6 +35,10 @@ impl LogicClientAvatar {
         }
 
         avatar
+    }
+
+    pub fn set_id(&mut self, id: &LogicLong) {
+        unsafe { *(self.0.wrapping_add(108) as *mut *const LogicLong) = id.to_heap() }
     }
 
     pub fn decode(&mut self, stream: &mut ByteStream) {

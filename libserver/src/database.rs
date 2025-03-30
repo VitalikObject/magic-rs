@@ -42,6 +42,14 @@ impl DatabaseConnection {
         }
     }
 
+    pub fn fetch_player(&self, id: &LogicLong) -> Result<Option<PlayerSaveData>> {
+        if !id.is_zero() {
+            self.load_existing_player_data(id)
+        } else {
+            Ok(None)
+        } 
+    }
+
     pub fn save_player_data(
         &self,
         id: &LogicLong,

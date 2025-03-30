@@ -26,6 +26,7 @@ mod array_list;
 mod byte_stream;
 mod database;
 mod ffi_util;
+mod helper;
 mod jni_util;
 mod logic;
 mod math;
@@ -150,6 +151,7 @@ fn handle_message(
         14101 => handle_go_home_message(session, message),
         14102 => handle_end_client_turn_message(session, db, message),
         14134 => handle_attack_npc_message(session, message),
+        14325 => handle_ask_for_avatar_profile_message(session, db, message),
         unhandled => warn!("unhandled message: {unhandled}"),
     }
 
@@ -238,6 +240,7 @@ fn handle_login_message(
     let data = rbase64::decode(&player_data.client_avatar_blob).unwrap();
     let mut byte_stream = ByteStream::from(&data);
     logic_client_avatar.decode(&mut byte_stream);
+    logic_client_avatar.set_id(&player_data.id);
 
     let mut logic_game_mode = LogicGameMode::new();
     logic_game_mode.load_home_state(&logic_client_home, &logic_client_avatar, 0);
@@ -428,6 +431,45 @@ fn handle_attack_npc_message(session: &mut PlayerSession, message: PiranhaMessag
 
     session.logic_game_mode = Some(logic_game_mode);
     session.messaging.send(npc_data_message.0);
+}
+
+fn handle_ask_for_avatar_profile_message(session: &mut PlayerSession, db: &Mutex<DatabaseConnection>, message: PiranhaMessage) {
+    use message::{AskForAvatarProfileMessage, AvatarProfileMessage, AvatarProfileFullEntry};
+
+    let ask_for_avatar_profile_message = AskForAvatarProfileMessage(message);
+
+    info!(
+        "AskForAvatarProfileMessage received, account_id: {}",
+        ask_for_avatar_profile_message.get_account_id()
+    );
+
+    let Ok(Some(player_data)) = db
+        .lock()
+        .unwrap()
+        .fetch_player(ask_for_avatar_profile_message.get_account_id())
+    else {
+        warn!(
+            "Profile Message: player with id {} was not found in the database",
+            ask_for_avatar_profile_message.get_account_id()
+        );
+        return;
+    };
+
+    let mut logic_client_avatar = LogicClientAvatar::new();
+
+    let data = rbase64::decode(&player_data.client_avatar_blob).unwrap();
+    let mut byte_stream = ByteStream::from(&data);
+    logic_client_avatar.decode(&mut byte_stream);
+
+    let mut avatar_profile_full_entry = AvatarProfileFullEntry::new();
+    avatar_profile_full_entry.set_logic_client_avatar(logic_client_avatar);
+    avatar_profile_full_entry.set_home_json(&player_data.home_json);
+
+    let mut avatar_profile_message = AvatarProfileMessage::new();
+
+    avatar_profile_message.set_avatar_profile_full_entry(avatar_profile_full_entry);
+
+    session.messaging.send(avatar_profile_message.0);
 }
 
 fn handle_change_avatar_name_message(session: &mut PlayerSession, message: PiranhaMessage) {
